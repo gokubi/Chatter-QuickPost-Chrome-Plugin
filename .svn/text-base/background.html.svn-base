@@ -1,0 +1,392 @@
+<html>
+	<head>
+	<script type="text/javascript" src="/js/jquery-1.5.1.min.js"></script>
+	
+	<script>
+	var oauthConfig = {
+		'authorize_url' : 'https://login.salesforce.com/services/oauth2/authorize',
+		'response_type' : 'token',
+		'client_id' 	: '3MVG9y6x0357HlecmEDCncgv7j2hLpHs6046y0kByYceLzGWgE2DnNFV7eAPL6QyEns._TWncCnR5Go8H4zYv',
+		'client_secret' : '8629989312427648112',
+		'redirect_uri' 	: 'https://login.salesforce.com/services/oauth2/success',
+		'display' 		: 'popup',
+		'state'			: 'chatterAuth',
+		'reauth_url'	: 'https://login.salesforce.com/services/oauth2/token',
+		'r_grant_type' 	: 'refresh_token',
+		'authorize_tabId' : null,
+	};
+
+	var oauth = {
+		'access_token' 	: null,
+		'instance_url'	: null,
+		'id_url'		: null,
+		'refresh_token'	: null
+	};
+	
+	var user 			= null;
+	var userGroups 		= null;
+	var selectedGroup	= null;
+	var authorized		= false;
+	
+	const notificationImg	= "./img/icon.png";
+	const loggedInTitle 	= "Congratulations ";
+	const loggedInMessage  	= "You have succesfully logged in to Salesforce";
+	
+	/**
+	* Generates authorization url
+	*/
+	function generateAuthorizationUrl(){
+		return oauthConfig.authorize_url + 
+		"?response_type=" 	+ oauthConfig.response_type + 
+		"&client_id=" 		+ oauthConfig.client_id + 
+		"&redirect_uri=" 	+ encodeURIComponent(oauthConfig.redirect_uri) + 
+		"&display=" 		+ oauthConfig.display +
+		"&state="			+ oauthConfig.state;
+	}
+	
+	/**
+	* Handles authorization flow
+	*/
+	function authorize(){
+		if(oauth.access_token != null){
+			chrome.browserAction.setPopup({'popup' : 'chatterConnect.html'});
+		}
+		else{
+			var width = 800, height = 600, left = (screen.width/2)-(width/2), top = (screen.height/2)-(height/2); 
+			chrome.windows.create( {
+				'url'		: generateAuthorizationUrl(), 
+				'type' 		: 'normal',
+				'width' 	: width,
+				'height'	: height,
+				'left'		: left,
+				'top'		: top
+				}, 
+				function(window) {
+					chrome.windows.update(window.id,{'focused':true});
+					
+					oauthConfig.authorize_tabId = window.tabs[0].id;
+					chrome.tabs.onUpdated.addListener(function(tab, info, authTab){
+						if(tab == oauthConfig.authorize_tabId && info.status == 'complete'){
+							// authorized
+							if(authTab.url.indexOf(oauthConfig.redirect_uri) == 0 && authTab.url.split("#").length > 1){
+								var message = authTab.url.split("#")[1];
+								oauth.access_token	= decodeURIComponent(message.match(/.*access_token=([^&]*)&.*/)[1]);
+								oauth.instance_url	= decodeURIComponent(message.match(/.*instance_url=([^&]*)&.*/)[1]);
+								oauth.id_url 	  	= decodeURIComponent(message.match(/.*id=([^&]*)&?.*/)[1]);
+								oauth.refresh_token	= decodeURIComponent(message.match(/.*refresh_token=([^&]*)&.*/)[1]);
+								fetchUserInfo();
+							}
+							// denied
+							else if(authTab.url.split("error=access_denied").length > 1){
+								chrome.tabs.remove(tab);
+							}
+						}
+					});
+				}
+			);
+		}
+	}
+	
+	/**
+	* Reauthenticate user using the refresh token
+	* callback - callback function
+	* callbackParams - array with callback function params
+	*/
+	function reauth(callback, callbackParams){
+		$.ajax({ 
+			type: 'POST', 
+			url: oauthConfig.reauth_url,
+			data: {	
+				'grant_type' 	: oauthConfig.r_grant_type,
+				'client_id' 	: oauthConfig.client_id,
+				'client_secret'	: oauthConfig.client_secret,
+				'refresh_token'	: oauth.refresh_token
+			},
+			beforeSend: function(xhr) { 
+				xhr.setRequestHeader('X-PrettyPrint', 1);
+			}, 
+			success: function(data) {
+				// update oauth values
+				oauth.access_token	= data.access_token;
+				oauth.instance_url	= data.instance_url;
+				oauth.id_url 	  	= data.id;
+				
+				// execute callback function
+				if(callback != null){
+					callback.apply(null,callbackParams);
+				}
+			}, 
+			error: function(xhr, textStatus, errorThrown) {
+				var error = JSON.parse(xhr.responseText);
+				alert(error[0].message);
+				logout();
+				authorize();
+			} 
+		});
+	}
+	
+	/**
+	* Gets user info from salesforce
+	*/
+	function fetchUserInfo(){
+		if(authorized == false){
+			authorized = true;
+			$.ajax({ 
+				type: 'GET', 
+				url: oauth.id_url,
+				data: {	
+					'oauth_token' 	: oauth.access_token,
+					'Format' 		: 'json',
+					'Version'		: 'latest'
+				},
+				beforeSend: function(xhr) { 
+					xhr.setRequestHeader('X-PrettyPrint', 1);
+				}, 
+				success: function(data) {
+					initUserData(data);
+				}, 
+				error: function(xhr, textStatus, errorThrown) {
+					authorized = false;
+					if(xhr.responseText == 'Bad_OAuth_Token'){
+						reauth(fetchUserInfo);
+					}
+				} 
+			});
+		}
+	}
+	
+	/*
+	* Retrieves user data and init userGroups 
+	* @param data - json with userInfo from rest api
+	*/
+	function initUserData(data){
+		user = data;
+		queryGroups();
+		loggedIn();
+	}
+	
+	/**
+	* Notifies user is logged in
+	*/
+	function loggedIn(){
+		// close authorization window
+		if(oauthConfig.authorize_tabId != null){
+			chrome.tabs.remove(oauthConfig.authorize_tabId);
+			oauthConfig.authorize_tabId = null;
+		}
+	
+		// display notification
+		var notification = webkitNotifications.createNotification(
+			notificationImg,  
+			loggedInTitle + user.display_name, 
+			loggedInMessage 
+		);
+		notification.show();
+		
+		// close notification
+		setTimeout(function () {
+			notification.cancel();
+		}, 7000);
+		
+		// set popup
+		chrome.browserAction.setPopup({'popup' : 'chatterConnect.html'});
+	}
+	
+	/**
+	* Performs a request to rest api that executes a query
+	* @param callback - method invoked to process the result
+	* @param q - query
+	*/
+	function query(callback, q){
+		var url = user.urls.query.replace('{version}', '20.0');
+		$.ajax({ 
+			type: 'GET', 
+			url: url,
+			data: {'q' : q},
+			beforeSend: function(xhr) { 
+				xhr.setRequestHeader('Content-type', 'application/json');
+				xhr.setRequestHeader('Authorization', 'OAuth ' + oauth.access_token); 
+				xhr.setRequestHeader('X-PrettyPrint', 1);
+			}, 
+			success: function(data) { 
+				callback(data); 
+			}, 
+			error: function(xhr, textStatus, errorThrown) {
+				if(errorThrown == 'Unauthorized'){
+					callbackParams = [callback, q];
+					reauth(query, callbackParams);
+				}
+				else{
+					var error = JSON.parse(xhr.responseText);
+					if(error[0].errorCode == 'INVALID_TYPE'){
+						alert("Unable to retrieve groups, please check that chatter is enabled for your organization");
+					}
+					else{
+						alert(error[0].message);
+					}
+					logout();
+				}
+			} 
+		});
+	}
+	
+	/**
+	* Performs a request to rest api that operates with sobjects
+	* @param callback - method invoked to process the result
+	* @param object - Object that will be used (Account, Contact, etc.)
+	* @param data
+	*/
+	function sobject(callback, object, data){
+		var url = user.urls.sobjects.replace('{version}', '21.0');
+		$.ajax({ 
+			type: "POST", 
+			url: url + object, 
+			data: data,
+			beforeSend: function(xhr) { 
+				xhr.setRequestHeader('Content-type', 'application/json');
+				xhr.setRequestHeader('Authorization', 'OAuth ' + oauth.access_token); 
+				xhr.setRequestHeader('X-PrettyPrint', 1);
+			}, 
+			success: function(data) { 
+			  callback(data); 
+			}, 
+			error: function(xhr, textStatus, errorThrown) {
+				if(errorThrown == 'Unauthorized'){
+					callbackParams = [callback, object, data];
+					reauth(sobject, callbackParams);
+				}
+				else{
+					var error = JSON.parse(xhr.responseText);
+					alert(error[0].message);
+				}
+			} 
+		});
+	}
+	
+	/*
+	* Query userGroups to rest api 
+	*/
+	function queryGroups(){
+		var userId = user.user_id.replace(/\'/g, "\\'");
+		var q = "SELECT Id , CollaborationGroup.Name, CollaborationGroup.SmallPhotoUrl, CollaborationGroup.Description, CollaborationGroupId FROM CollaborationGroupMember where MemberId='" + userId + "' ORDER BY CollaborationGroup.Name";
+		query(retrieveGroups, q);
+	}
+	
+	/*
+	* Retrieves userGroups 
+	* @param data - json with userInfo from rest api
+	*/
+	function retrieveGroups(data){
+		userGroups = new Array();
+		
+		userGroups[0] = {
+			value	: user.user_id , 
+			label 	: 'My Profile',
+			desc	: user.display_name,
+			icon	: user.photos.thumbnail + "?oauth_token=" + oauth.access_token
+		}
+
+		for(var i=0 ; i<data.records.length ; i++){
+			userGroups[i+1] = {
+				value 	: data.records[i].CollaborationGroupId , 
+				label 	: data.records[i].CollaborationGroup.Name,
+				desc	: data.records[i].CollaborationGroup.Description != null ? data.records[i].CollaborationGroup.Description : '',
+				icon	: data.records[i].CollaborationGroup.SmallPhotoUrl + "?oauth_token=" + oauth.access_token
+			}
+		}
+	}
+
+	/**
+	* Creates a link post in Salesforce
+	* @param title - feed title
+	* @param body - feed body
+	* @param url - feed url
+	* @param type - feed type
+	* @param parentId - feed parentId
+	*/
+	function linkPost(title, body, url, type, parentId){	
+		var data = {
+			"Title" : title,
+			"Body" : body,
+			"LinkUrl" : url,
+			"Type" : "LinkPost",
+			"ParentId" : parentId
+		}
+		
+		var dataString = escapeSpecialChars(data);
+		sobject(retrieveFeed, 'FeedItem', dataString);	
+	}
+	
+	/**
+	* Method triggered when the feed item is correctly created
+	* @param data - json with feed id from rest api
+	*/
+	function retrieveFeed(data){
+		var notification = webkitNotifications.createHTMLNotification(
+			'success.html'
+		);
+		
+		notification.show();
+		
+		// close notification
+		setTimeout(function () {
+			notification.cancel();
+		}, 7000);
+		
+		var popups = chrome.extension.getViews({type: "popup"});
+		if (popups.length != 0) {
+		  var popup = popups[0];
+		  popup.close();
+		}
+	}
+	
+	/**
+	* Handles Logout functionality
+	*/
+	function logout(){
+		var width = 800, height = 600, left = (screen.width/2)-(width/2), top = (screen.height/2)-(height/2); 
+		chrome.windows.create( {
+			'url'	: oauth.instance_url + "/secur/logout.jsp?display=popup&startURL=" + escape(generateAuthorizationUrl()),
+			'type' 	: 'normal',
+			'width' : width,
+			'height': height,
+			'left'	: left,
+			'top'	: top
+		}, function(window){
+			oauthConfig.authorize_tabId = window.tabs[0].id;
+		});
+	
+		oauth.access_token 	= null;
+		oauth.id_url		= null;
+		authorized 			= false;
+		user 				= null;
+		userGroups 			= null;
+		chrome.browserAction.setPopup({"popup" : ''});
+	}
+	
+	/**
+	* Escape special chars of a json to be posted as a string 
+	*/
+	function escapeSpecialChars(jsonObject){
+		var jsonString = JSON.stringify(jsonObject);		
+		return jsonString.replace(/\\n/g, "\\n")
+						 .replace(/\\'/g, "\\'")
+					     .replace(/\\"/g, "\\\"")
+						 .replace(/\\&/g, "\\&")
+						 .replace(/\\r/g, "\\r")
+						 .replace(/\\t/g, "\\t")
+						 .replace(/\\b/g, "\\b")
+						 .replace(/\\f/g, "\\f");
+	}
+
+	chrome.browserAction.onClicked.addListener(function() {
+		authorize();
+	});
+	
+	</script>
+	</head>
+	
+	<body>
+	
+	</body>
+<html>

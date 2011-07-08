@@ -1,0 +1,29 @@
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/svn/chatter/!svn/ver/37/PostToChatterChromeExtension
+END
+background.html
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/svn/chatter/!svn/ver/65/PostToChatterChromeExtension/background.html
+END
+chatterConnect.html
+K 25
+svn:wc:ra_dav:version-url
+V 73
+/svn/chatter/!svn/ver/60/PostToChatterChromeExtension/chatterConnect.html
+END
+success.html
+K 25
+svn:wc:ra_dav:version-url
+V 66
+/svn/chatter/!svn/ver/17/PostToChatterChromeExtension/success.html
+END
+manifest.json
+K 25
+svn:wc:ra_dav:version-url
+V 67
+/svn/chatter/!svn/ver/65/PostToChatterChromeExtension/manifest.json
+END

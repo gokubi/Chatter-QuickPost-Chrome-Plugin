@@ -1,0 +1,44 @@
+<html>
+	<head>
+		<script type="text/javascript" src="/js/jquery-1.5.1.min.js"></script>
+		<script type="text/javascript" src="/js/jquery-ui-1.8.11.custom.min.js"></script>
+		<script type="text/javascript" src="/js/chatterConnect.js"></script>
+		
+		<link href="/css/ui-lightness/jquery-ui-1.8.11.custom.css"rel="stylesheet" type="text/css">
+		<link href="/css/styles.css"rel="stylesheet" type="text/css">
+	</head>
+	<body>
+	<div id="header">
+		<img src="./img/chatter_logo.png" alt="Salesforce Chatter" id="chatterLogo" title="Salesforce Chatter">
+	</div>
+	<div id="loader">
+		<img src="./img/loading32.gif"></img>
+	</div>	
+	<div class="chatter-content">
+		<div id="chatter-box" class="publishercontainer">
+			<div class="publisherrightcontainer">
+				<div class="publishercontrols">
+					<div id="textarea" style="height:65px;">
+						<textarea class="publishertextarea" id="postTextArea" maxlength="1001" name="publishereditablearea" type="text"></textarea>
+					</div>
+					<div id="buttons">
+						<span style="margin-top:5px; float:left;">Post to:</span>
+						<div style="float: left; margin-left: 5px;">
+							<input class="inputField" id="chatterGroups"/>
+							<input type="hidden" id="chatterGroup-id"/>
+						</div>
+						<input value=" Post to Chatter " class="btnPrimary btn" id="publishersharebutton" name="publishersharebutton" onclick="linkPost()" title="Share" type="button">
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div id="metaContent">
+		<div id="metaImg"></div>
+		<div id="metaText"></div>
+	</div>
+	<div id="footer">
+		You're logged in as <span id="username"></span> | <a id="notYou" href="#">Not You?</a> 
+	</div>
+	</body>
+</html>

@@ -1,0 +1,36 @@
+<html>
+	<head>
+		<script type="text/javascript" src="/js/jquery-1.5.1.min.js"></script>
+			<style type="text/css">
+				body {
+					font-family: Arial, Helvetica, sans-serif;
+					font-size: 75%;
+				}
+				#icon {
+					float: left;
+					margin-right: 10px;
+				}
+			</style>
+		<script>
+			function showPost(){
+				var bg = chrome.extension.getBackgroundPage();
+				var url = bg.oauth.instance_url + '/' + bg.selectedGroup;
+				
+				chrome.tabs.create( {
+					'url'	: url
+				});
+			}
+		</script>
+	</head>
+	<body>
+		<div id="icon">
+			<img src="../img/icon48.png"></img>
+		</div>
+		<div>
+			<b>Success! Post created</b></br>				
+			<a href="#" onclick="showPost()">View in salesforce</a>
+			</br>
+			</br>
+		</div>
+	</body>
+</html>
