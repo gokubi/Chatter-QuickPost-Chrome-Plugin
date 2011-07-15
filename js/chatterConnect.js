@@ -77,6 +77,11 @@ function initMetadata(){
 	// init url
 	chrome.tabs.getSelected(null, function(tab){
 		metaUrl = tab.url;
+		snippet = "";
+		//get selected text
+		chrome.tabs.sendRequest(tab.id, {method: "getSelection"}, function (response) {
+			$("#postTextArea").val(response.data);
+    	});
 	});
 	
 	// init image
@@ -97,6 +102,9 @@ function initMetadata(){
 		$(document.createElement("br")).appendTo("#metaText");
 		$(document.createElement("br")).appendTo("#metaText");
 	}
+	
+	
+	//$("textarea#postTextArea").val("test");
 	
 	if(metaDesc != null){
 		desc = title.length + metaDesc.length > metaLength ? metaDesc.substring(0, metaLength - title.length) + '...' : metaDesc;

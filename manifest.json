@@ -13,5 +13,13 @@
   },
   "permissions": [
     "tabs", "<all_urls>", "notifications", "history"
-  ]
+  ],
+  "content_scripts": [
+  {
+    "matches": ["<all_urls>"],
+    "js": ["./js/selection.js"],
+    "run_at": "document_start",
+    "all_frames": true
+  }
+ ]
 }
