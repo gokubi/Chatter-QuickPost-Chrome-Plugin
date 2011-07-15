@@ -77,7 +77,6 @@ function initMetadata(){
 	// init url
 	chrome.tabs.getSelected(null, function(tab){
 		metaUrl = tab.url;
-		snippet = "";
 		//get selected text
 		chrome.tabs.sendRequest(tab.id, {method: "getSelection"}, function (response) {
 			$("#postTextArea").val(response.data);
