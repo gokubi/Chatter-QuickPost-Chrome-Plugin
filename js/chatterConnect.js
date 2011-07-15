@@ -104,8 +104,6 @@ function initMetadata(){
 	}
 	
 	
-	//$("textarea#postTextArea").val("test");
-	
 	if(metaDesc != null){
 		desc = title.length + metaDesc.length > metaLength ? metaDesc.substring(0, metaLength - title.length) + '...' : metaDesc;
 		$("#metaText").append($(document.createElement("span")).text(desc));
