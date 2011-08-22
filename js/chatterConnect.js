@@ -70,9 +70,6 @@ function init(){
 }
 
 function initMetadata(){
-	// reset data
-	$("#metaImg").empty();
-	$("#metaText").empty();
 
 	// init url
 	chrome.tabs.getSelected(null, function(tab){
@@ -82,32 +79,6 @@ function initMetadata(){
 			$("#postTextArea").val(response.data);
     	});
 	});
-	
-	// init image
-	chrome.tabs.captureVisibleTab(null,null, function(dataUrl){		
-		// create image
-		$(document.createElement("img"))
-			.attr({ id: 'tabImg', src: dataUrl })
-			.appendTo("#metaImg");
-	});
-	
-	// init meta text
-	var content = '';
-	var title = '';
-	var desc = '';
-	if(metaTitle != null) {
-		title = metaTitle.length > metaLength ? metaTitle.substring(0, metaLength) + '...' : metaTitle;
-		$("#metaText").append($(document.createElement("b")).text(title));
-		$(document.createElement("br")).appendTo("#metaText");
-		$(document.createElement("br")).appendTo("#metaText");
-	}
-	
-	
-	if(metaDesc != null){
-		desc = title.length + metaDesc.length > metaLength ? metaDesc.substring(0, metaLength - title.length) + '...' : metaDesc;
-		$("#metaText").append($(document.createElement("span")).text(desc));
-	} 
-
 }
 
 function initGroups(){
@@ -119,6 +90,7 @@ function initGroups(){
 		source: userGroups,
 		focus: function( event, ui ) {
 			$( "#chatterGroups" ).val( ui.item.label );
+			
 			return false;
 		},
 		select: function( event, ui ) {
@@ -166,23 +138,15 @@ function initGroups(){
 	});
 	
 	$("#chatterGroups").blur(function(){
-		if($(this).val() == null || $("#chatterGroup-id").val() == ''){
+		if($("#chatterGroup-id").val() == ''){
 			$(this).val(groupsText);
 			$(this).css("color", "#999");
 		}
-	});
-
-	$('#chatterGroups').live('keydown', function(e) { 
-		var keyCode = e.keyCode || e.which; 
-		if (keyCode != 9) { 
-			$("#chatterGroup-id").val('');
-		} 
 	});
 }
 
 function showLoader(){
 	$("#chatter-box").hide();
-	$("#metaContent").hide();
 	$("#footer").hide();
 	$("#loader").show();
 }
@@ -190,7 +154,6 @@ function showLoader(){
 function hideLoader(){
 	$("#loader").hide();
 	$("#chatter-box").show();
-	$("#metaContent").show();
 	$("#footer").show();
 }
 
@@ -199,7 +162,7 @@ function hideLoader(){
 //************************
 function linkPost(){
 	removeErrors();	
-
+	
 	if(metaTitle == null && metaDesc == null && $("textarea#postTextArea").val() == ''){
 		addError("postTextArea", emptyPostMessage);
 	}
